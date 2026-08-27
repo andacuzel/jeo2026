@@ -128,7 +128,6 @@
                 "newStats": { "military": num, "diplomacy": num, "stability": num, "economy": num }
             }`;
 
-            // Savaş oyunu olduğu için askeri hamlelerin engellenmesini önlemek adına güvenlik filtreleri minimuma indirildi.
             const payload = {
                 contents: [{ parts: [{ text: prompt }] }],
                 safetySettings: [
@@ -140,7 +139,8 @@
             };
 
             try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
+                // Model isimlendirmesi güncellendi (gemini-1.5-flash-latest)
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -148,19 +148,19 @@
 
                 const data = await response.json();
 
-                // 1. HTTP seviyesinde hata var mı kontrol et
+                // HTTP seviyesinde hata kontrolü
                 if (!response.ok) {
                     throw new Error(`Google API Hatası: ${data.error?.message || response.statusText}`);
                 }
 
-                // 2. Güvenlik filtresine takıldı mı kontrol et
+                // Güvenlik filtresi kontrolü
                 if (!data.candidates || data.candidates.length === 0) {
                     throw new Error(`İçerik engellendi. Sebep: ${data.promptFeedback?.blockReason || 'Bilinmeyen Güvenlik Filtresi'}`);
                 }
 
                 let resultText = data.candidates[0].content.parts[0].text;
                 
-                // JSON temizleme (Markdown temizliği)
+                // JSON temizleme (Markdown formatını düz metne çevirme)
                 resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
                 const result = JSON.parse(resultText);
 
@@ -177,11 +177,11 @@
                     ${result.narrative}
                 </div>`;
                 
-                // Haritada yeni krizi işaretle
+                // Haritada yeni krizi işaretleme
                 crisisMarker.setLatLng(result.crisisCoords).bindPopup(result.newCrisis).openPopup();
                 map.flyTo(result.crisisCoords, 5);
 
-                // Formu Temizle
+                // Form Temizliği
                 ['m1', 'm2', 'm3', 'covert'].forEach(id => document.getElementById(id).value = '');
 
             } catch (error) {
