@@ -91,6 +91,43 @@ svg#map.drag{cursor:grabbing}
 .econ div{background:#d3c9b0;padding:5px 8px}
 .econ span{display:block;font-size:9.5px;letter-spacing:.1em;color:#6d6353;text-transform:uppercase}
 
+/* tur başlığı ve zaman */
+.turnhead{display:flex;align-items:baseline;gap:10px;border-bottom:2px solid var(--ink);padding-bottom:5px;margin-bottom:11px}
+.turnhead b{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:-.2px}
+.turnhead .adv{font-family:var(--mono);font-size:11px;color:#7a6f5c;margin-left:auto}
+.turnhead .from{font-family:var(--mono);font-size:11px;color:#8a8069}
+
+/* değişim şeridi */
+.deltas{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0 4px}
+.dchip{font-family:var(--mono);font-size:11px;padding:3px 7px;background:#d3c9b0;border-left:2px solid #8a8069}
+.dchip.up{border-left-color:#3f6b4a;color:#2f5138}
+.dchip.down{border-left-color:#a83c33;color:#7d2c25}
+
+/* zincir */
+.chain{margin:11px 0 4px;border-left:2px solid #b9ae94;padding-left:11px}
+.chain .node{position:relative;margin-bottom:9px}
+.chain .node::before{content:'';position:absolute;left:-16px;top:5px;width:7px;height:7px;background:var(--ink);border-radius:50%}
+.chain .node.kisa::before{background:#8a8069}
+.chain .node.gec::before{background:none;border:1.5px solid #8a8069}
+.chain .f{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:#7a6f5c}
+.chain .m{font-size:13.5px;line-height:1.5}
+.chain .a{font-family:var(--mono);font-size:11px;color:#6d6353}
+
+/* bloklar */
+.blocrow{display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:1px dotted #c9beA5}
+.blocrow .nm{flex:1;font-size:13px}
+.blocrow .tr{width:64px;height:5px;background:#cbc0a6;position:relative}
+.blocrow .tr i{position:absolute;top:0;bottom:0;transition:all .5s ease}
+.blocrow .vl{font-family:var(--mono);font-size:12px;width:52px;text-align:right}
+
+/* danışman kurulu */
+.adv-card{border:1px solid #bfb49a;background:#ded5c2;padding:10px 11px;margin-bottom:9px}
+.adv-card h4{margin:0 0 5px;font-family:var(--display);font-size:14px;letter-spacing:.04em}
+.adv-card p{margin:0 0 8px;font-size:13.5px;line-height:1.5}
+.adv-card button{background:#c8bda4;border:1px solid #a89a80;color:#2c2822;padding:5px 9px;font-size:12px;border-radius:2px;text-align:left}
+.adv-card button:hover{background:#bdb096}
+.adv-empty{font-family:var(--mono);font-size:12px;color:#7a6f5c}
+
 #composer{flex:0 0 auto;border-top:1px solid #a89a80;background:var(--paper-2);padding:8px 12px 12px}
 .chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none}
 .chips::-webkit-scrollbar{display:none}
@@ -166,9 +203,11 @@ textarea{flex:1;resize:none;border:1px solid #a89a80;background:#efe9dc;color:va
       <div class="tabs">
         <button class="tab on" data-pane="feed">Masa</button>
         <button class="tab" data-pane="world">Dünya</button>
+        <button class="tab" data-pane="kurul">Kurul</button>
       </div>
       <div class="pane on" id="feed"></div>
       <div class="pane" id="world"></div>
+      <div class="pane" id="kurul"></div>
       <div id="composer">
         <div class="chips" id="chips"></div>
         <div class="crow">
@@ -240,6 +279,23 @@ const CRISES = [
   {k:'Doğu Kongo ve Büyük Göller', at:'Dem. Rep. Congo', h:52},
   {k:'Hindistan–Pakistan kırılgan ateşkesi', at:'India', h:36}
 ];
+
+const BLOCS = {
+  'NATO': ['United States of America','United Kingdom','France','Germany','Italy','Poland','Canada','Netherlands','Spain','Turkey'],
+  'Avrupa Birliği': ['Germany','France','Italy','Spain','Netherlands','Poland','Greece','Sweden'],
+  'Körfez': ['Saudi Arabia','United Arab Emirates','Qatar','Kuwait','Oman'],
+  'Rusya ekseni': ['Russia','Belarus','Iran','North Korea'],
+  'Çin ekseni': ['China','Pakistan'],
+  'Küresel Güney': ['India','Brazil','South Africa','Indonesia','Nigeria','Egypt']
+};
+const ROLLER = [
+  {k:'dis', ad:'Dışişleri'},
+  {k:'ord', ad:'Genelkurmay'},
+  {k:'eko', ad:'Hazine'},
+  {k:'ist', ad:'İstihbarat'}
+];
+const FAZ = {aninda:'Anında', kisa:'Kısa vadede', gec:'Gecikmeli'};
+const TEK_KISA = {ai:'Yapay zekâ', cip:'Yarı iletken', iha:'İHA', enj:'Enerji', uzy:'Uzay', sbr:'Siber'};
 
 const TECHS = [['ai','Yapay zekâ ve hesaplama'],['cip','Yarı iletken üretimi'],['iha','İHA ve otonom sistemler'],
   ['enj','Enerji ve nükleer'],['uzy','Uzay ve uydu'],['sbr','Siber ve istihbarat']];
@@ -397,7 +453,13 @@ function showTab(id){
   document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on', p.id===id));
 }
 function renderHead(){
-  $('#date').textContent = AYLAR[S.m-1] + ' ' + S.y;
+  const yeniTarih = AYLAR[S.m-1] + ' ' + S.y;
+  const d = $('#date');
+  if(d.textContent && d.textContent !== yeniTarih){
+    d.style.color = 'var(--brass)';
+    setTimeout(()=>{ d.style.color = ''; }, 1800);
+  }
+  d.textContent = yeniTarih;
   $('#whoami').textContent = tr(S.player) + ' · Tur ' + S.turn;
   const box = $('#stats'); box.innerHTML='';
   for(const [k,label] of STATKEYS){
@@ -417,8 +479,42 @@ function meter(label, val, color){
   track.appendChild(i); m.append(top,track);
   return m;
 }
+function blocSkor(ad){
+  const uyeler = BLOCS[ad] || [];
+  const dogrudan = S.relations.find(r => norm(r.a) === norm(ad));
+  if(dogrudan) return dogrudan.v;
+  const bulunan = S.relations.filter(r => uyeler.some(u => norm(u) === norm(r.a) && u !== S.player));
+  if(!bulunan.length) return null;
+  return Math.round(bulunan.reduce((t,r)=>t+r.v, 0) / bulunan.length);
+}
+function renderBlocs(w){
+  w.appendChild(el('div','wsect','Blok ilişkileri'));
+  let varMi = false;
+  for(const ad of Object.keys(BLOCS)){
+    const v = blocSkor(ad);
+    if(v === null) continue;
+    varMi = true;
+    const onceki = S.blocPrev ? S.blocPrev[ad] : undefined;
+    const row = el('div','blocrow');
+    row.appendChild(el('div','nm', ad));
+    const tr_ = el('div','tr'), i = el('i');
+    const g = Math.min(50, Math.abs(v)/2);
+    i.style.width = g + '%';
+    i.style.background = v >= 0 ? '#3f6b4a' : '#a83c33';
+    if(v >= 0){ i.style.left = '50%'; } else { i.style.right = '50%'; }
+    tr_.appendChild(i); row.appendChild(tr_);
+    const okla = (onceki === undefined || onceki === v) ? '' : (v > onceki ? ' ▲' : ' ▼');
+    const vl = el('div','vl', (v>0?'+':'') + v + okla);
+    vl.style.color = v > 25 ? '#3f6b4a' : v < -25 ? '#a83c33' : '#6d6353';
+    row.appendChild(vl);
+    w.appendChild(row);
+  }
+  if(!varMi) w.appendChild(el('div','rel','Blok verisi henüz oluşmadı.'));
+}
+
 function renderWorld(){
   const w = $('#world'); w.innerHTML='';
+  renderBlocs(w);
   w.appendChild(el('div','wsect','Bölge gündemi'));
   [...S.crises].sort((a,b)=>b.h-a.h).forEach(c => w.appendChild(meter(c.k, c.h, heatColor(c.h))));
 
@@ -443,26 +539,121 @@ function renderWorld(){
   add('Enflasyon', '%'+S.econ.enf);
   w.appendChild(e);
 }
+function renderKurul(){
+  const k = $('#kurul'); k.innerHTML='';
+  k.appendChild(el('div','wsect','Danışma kurulu'));
+  const gorusler = S.advisors || [];
+  if(!gorusler.length){
+    k.appendChild(el('div','adv-empty','Kurul henüz toplanmadı. İlk tur sonrası görüşler burada.'));
+    return;
+  }
+  for(const rol of ROLLER){
+    const g = gorusler.find(x => x.r === rol.k);
+    if(!g) continue;
+    const c = el('div','adv-card');
+    c.appendChild(el('h4', null, rol.ad));
+    c.appendChild(el('p', null, g.m));
+    if(g.o){
+      const b = el('button', null, '→ ' + g.o);
+      b.onclick = ()=>{ $('#input').value = g.o; showTab('feed'); $('#input').focus(); };
+      c.appendChild(b);
+    }
+    k.appendChild(c);
+  }
+  const uyari = el('div','adv-empty');
+  uyari.style.marginTop = '10px';
+  uyari.textContent = 'Danışmanlar kendi önceliklerini savunur; hepsi aynı anda haklı olamaz.';
+  k.appendChild(uyari);
+}
+
 function addEntry(n){ $('#feed').appendChild(n); $('#feed').scrollTop = 1e9; }
-function renderTurn(action, r){
+function renderTurn(action, r, delta){
   const e = el('div','entry');
-  const stamp = el('div','stamp');
-  stamp.append(el('span',null, AYLAR[S.m-1]+' '+S.y), el('span',null,'Tur '+S.turn));
-  e.appendChild(stamp);
-  if(action) e.appendChild(el('div','mine',action));
+
+  const th = el('div','turnhead');
+  th.appendChild(el('b', null, 'Tur ' + S.turn));
+  th.appendChild(el('span','from', AYLAR[S.m-1] + ' ' + S.y));
+  if(delta && delta.ay > 0) th.appendChild(el('span','adv', '+' + delta.ay + ' ay'));
+  e.appendChild(th);
+
+  if(action) e.appendChild(el('div','mine', action));
   String(r.d||'').split(/\n+/).filter(Boolean).forEach(p => e.appendChild(el('p',null,p)));
+
+  if(Array.isArray(r.zincir) && r.zincir.length){
+    e.appendChild(el('div','sect','Sonuç zinciri'));
+    const c = el('div','chain');
+    const sira = {aninda:0, kisa:1, gec:2};
+    [...r.zincir].sort((a,b)=>(sira[a.f]??9)-(sira[b.f]??9)).forEach(z => {
+      const n = el('div','node ' + (z.f||'aninda'));
+      n.appendChild(el('div','f', FAZ[z.f] || 'Anında'));
+      n.appendChild(el('div','m', z.m));
+      if(z.a) n.appendChild(el('div','a', z.a));
+      c.appendChild(n);
+    });
+    e.appendChild(c);
+  }
+
   if(Array.isArray(r.e) && r.e.length){
-    e.appendChild(el('div','sect','Sonuçlar'));
+    e.appendChild(el('div','sect','Tespitler'));
     const ul = el('ul'); r.e.forEach(x=>ul.appendChild(el('li',null,x))); e.appendChild(ul);
   }
   if(Array.isArray(r.w) && r.w.length){
     e.appendChild(el('div','sect','Dünya gündemi'));
     const ul = el('ul','wire'); r.w.forEach(x=>ul.appendChild(el('li',null,x))); e.appendChild(ul);
   }
+  if(delta && delta.chips.length){
+    e.appendChild(el('div','sect','Değişenler'));
+    const d = el('div','deltas');
+    delta.chips.forEach(c => d.appendChild(el('span','dchip ' + c.yon, c.metin)));
+    e.appendChild(d);
+  }
   if(Array.isArray(r.t)) r.t.forEach(t => e.appendChild(el('div','terr', `${tr(t.c)} → ${tr(t.o)}${t.n?' · '+t.n:''}`)));
   if(r.g) e.appendChild(el('div','gameover', r.g));
   addEntry(e);
 }
+
+/* ---- durum fotoğrafı ve fark ---- */
+function snapshot(){
+  return {
+    y:S.y, m:S.m,
+    stats:{...S.stats}, tech:{...S.tech}, econ:{...S.econ},
+    rel:Object.fromEntries(S.relations.map(r=>[r.a, r.v])),
+    kriz:Object.fromEntries(S.crises.map(c=>[c.k, c.h]))
+  };
+}
+function fark(a){
+  const chips = [];
+  const ok = n => n > 0 ? '▲' : '▼';
+  const yon = n => n > 0 ? 'up' : 'down';
+  for(const [k,label] of STATKEYS){
+    const d = S.stats[k] - a.stats[k];
+    if(d) chips.push({yon:yon(d), metin:`${label} ${a.stats[k]}→${S.stats[k]} ${ok(d)}${Math.abs(d)}`});
+  }
+  for(const [k,label] of TECHS){
+    const d = S.tech[k] - a.tech[k];
+    if(d) chips.push({yon:yon(d), metin:`${TEK_KISA[k]||label} ${ok(d)}${Math.abs(d)}`});
+  }
+  for(const c of S.crises){
+    const onceki = a.kriz[c.k];
+    if(onceki === undefined){ chips.push({yon:'down', metin:`YENİ KRİZ: ${c.k} ${c.h}`}); continue; }
+    const d = c.h - onceki;
+    if(d) chips.push({yon: d>0?'down':'up', metin:`${c.k} ${onceki}→${c.h}`});
+  }
+  for(const k of Object.keys(a.kriz)) if(!S.crises.some(c=>c.k===k))
+    chips.push({yon:'up', metin:`KAPANDI: ${k}`});
+  for(const r of S.relations){
+    const onceki = a.rel[r.a];
+    if(onceki === undefined){ chips.push({yon: r.v>=0?'up':'down', metin:`${tr(r.a)} ${r.v>0?'+':''}${r.v}`}); continue; }
+    const d = r.v - onceki;
+    if(d) chips.push({yon:yon(d), metin:`${tr(r.a)} ${onceki}→${r.v}`});
+  }
+  if(S.econ.brent !== a.econ.brent) chips.push({yon: S.econ.brent>a.econ.brent?'down':'up', metin:`Brent $${a.econ.brent}→$${S.econ.brent}`});
+  if(S.econ.buyume !== a.econ.buyume) chips.push({yon: S.econ.buyume>a.econ.buyume?'up':'down', metin:`Büyüme %${a.econ.buyume}→%${S.econ.buyume}`});
+  if(S.econ.enf !== a.econ.enf) chips.push({yon: S.econ.enf>a.econ.enf?'down':'up', metin:`Enflasyon %${a.econ.enf}→%${S.econ.enf}`});
+  const ay = (S.y - a.y) * 12 + (S.m - a.m);
+  return {chips, ay};
+}
+
 function renderChips(opts){
   const c = $('#chips'); c.innerHTML='';
   (opts||[]).slice(0,4).forEach(o => {
@@ -481,8 +672,13 @@ KURALLAR
 - Her tur 1-3 ay ilerlet.
 - Dünya oyuncudan bağımsız da işler: her tur w alanına, oyuncunun hamlesiyle ilgisiz 2-3 gelişme yaz (başka bölgelerde savaş, seçim, teknoloji atılımı, piyasa hareketi, darbe, anlaşma).
 - Diğer aktörler kendi çıkarlarını kovalar ve oyuncunun açığını kullanır. Zorluk arttıkça daha agresif oynarlar.
-- SADECE DEĞİŞEN ALANLARI döndür. Değişmeyen alanları hiç yazma. Bu çok önemli.
-- KISA TUT. Cevabın tamamı kısa olmalı, yoksa kesilir: d en fazla 90 kelime; e en fazla 3 madde, her biri 8 kelime; w en fazla 2 madde; o 3 seçenek, her biri 10 kelime; r sadece değişen en fazla 6 aktör; k sadece değişen en fazla 4 kriz.
+- SADECE DEĞİŞEN ALANLARI döndür. Değişmeyen alanları hiç yazma.
+- SONUÇLAR BELİRGİN OLSUN. Her hamlenin birden fazla sonucu olur ve bunlar zincirleme ilerler. zincir alanına 3-5 sonuç yaz: f="aninda" olanlar hamlenin hemen ardından, f="kisa" olanlar birkaç hafta içinde, f="gec" olanlar aylar sonra patlayan sonuçlar. Gecikmeli sonuçlar bir sonraki turlarda geri gelsin. a alanına sonucu üreten aktörü yaz.
+- ÇEKİNME. Sayılar gerçekten oynasın, krizler gerçekten tırmansın veya sönsün, aktörler misilleme yapsın. Nötr, hiçbir şeyin değişmediği tur yazma.
+- date alanını HER SEFERİNDE doldur, biçim "2026-11". Zamanı 1-3 ay ilerlet; büyük harekâtlarda daha çok.
+- BLOKLAR: r alanında birey devletlerin yanı sıra şu aktörleri de güncel tut: NATO, Avrupa Birliği, Körfez, Rusya ekseni, Çin ekseni. Bir hamle bunlardan birini ilgilendiriyorsa o blok mutlaka tepki versin.
+- DANIŞMANLAR: dan alanına dört rolün her birinden birer görüş yaz — dis (Dışişleri), ord (Genelkurmay), eko (Hazine), ist (İstihbarat). m alanı o rolün durum değerlendirmesi (en fazla 25 kelime), o alanı somut bir hamle önerisi (en fazla 12 kelime). Roller birbiriyle çelişebilir; her biri kendi önceliğini savunsun.
+- UZUNLUK: d en fazla 110 kelime; e en fazla 4 madde; w en fazla 3 madde; o 3 seçenek; r en fazla 8 aktör; k en fazla 5 kriz.
 - Toprak el değiştirirse t alanına yaz ve SADECE sana verilen İngilizce ülke adlarını kullan.
 - Sayısal alanlar 0-100 arası yeni mutlak değerdir. Sert olaylarda 8-20 puan oynasın.
 - Kriz ısıları (k) çözülürse düşer, tırmanırsa yükselir; ısısı 0'a inen kriz kapanır. Yeni kriz çıkarsa at alanına listedeki İngilizce ülke adını yaz.
@@ -490,7 +686,7 @@ KURALLAR
 - Sadece geçerli JSON döndür. Markdown yok, kod bloğu yok, açıklama yok.
 
 ŞEMA (tümü opsiyonel, sadece değişenler)
-{"d":"2-4 kısa paragraf, toplam 150 kelimeyi geçme","e":["hamlenin sonucu, en fazla 4 kısa madde"],"w":["oyuncudan bağımsız dünya gelişmesi, 2-3 madde"],"t":[{"c":"İngilizce ülke adı","o":"yeni sahip","n":"kısa"}],"s":{"eko":0,"ord":0,"ist":0,"itb":0},"tek":{"ai":0,"cip":0,"iha":0,"enj":0,"uzy":0,"sbr":0},"r":[{"a":"aktör","v":-100},{"a":"aktör","v":50}],"k":[{"k":"kriz adı","h":0,"at":"İngilizce ülke adı"}],"ec":{"brent":85,"buyume":2.4,"enf":3.6},"date":"2026-11","o":["3 farklı hamle önerisi, kısa"],"g":null}`;
+{"d":"2-4 kısa paragraf, toplam 150 kelimeyi geçme","e":["hamlenin sonucu, en fazla 4 kısa madde"],"w":["oyuncudan bağımsız dünya gelişmesi, 2-3 madde"],"t":[{"c":"İngilizce ülke adı","o":"yeni sahip","n":"kısa"}],"s":{"eko":0,"ord":0,"ist":0,"itb":0},"tek":{"ai":0,"cip":0,"iha":0,"enj":0,"uzy":0,"sbr":0},"r":[{"a":"aktör","v":-100},{"a":"NATO","v":50}],"k":[{"k":"kriz adı","h":0,"at":"İngilizce ülke adı"}],"ec":{"brent":85,"buyume":2.4,"enf":3.6},"date":"2026-11","zincir":[{"f":"aninda","m":"sonuç","a":"aktör"},{"f":"kisa","m":"sonuç","a":"aktör"},{"f":"gec","m":"sonuç","a":"aktör"}],"dan":[{"r":"dis","m":"görüş","o":"öneri"},{"r":"ord","m":"görüş","o":"öneri"},{"r":"eko","m":"görüş","o":"öneri"},{"r":"ist","m":"görüş","o":"öneri"}],"o":["3 farklı hamle önerisi"],"g":null}`;
 
 function ctx(short){
   const rel = S.relations.slice(0,14).map(r=>`${tr(r.a)}:${r.v}`).join(', ');
@@ -515,6 +711,7 @@ KRİZLER: ${kr}
 EKONOMİ: Brent $${S.econ.brent}, büyüme %${S.econ.buyume}, enflasyon %${S.econ.enf}
 SON GELİŞMELER:
 ${hist || '- oyun yeni başlıyor'}
+${(S.pendingChain && S.pendingChain.length) ? '\nBEKLEYEN GECİKMELİ SONUÇLAR (zamanı geldiyse bu turda patlat):\n' + S.pendingChain.map(x=>'- '+x).join('\n') : ''}
 
 ${liste}`;
 }
@@ -523,12 +720,14 @@ const P_OPEN = () => `${SYSTEM}
 
 ${ctx(true)}
 
-GÖREV: Oyuncu ${tr(S.player)} devletini şimdi devraldı. SADECE d, o, s, r alanlarını döndür.
-d: mevcut tablo, en acil üç sorun, eldeki kozlar — en fazla 70 kelime.
-o: üç açılış hamlesi önerisi, her biri 10 kelime.
-s: dört stat, ${tr(S.player)}'nin 2026'daki gerçek konumuna göre 0-100.
-r: 6 aktör (komşular ve büyük güçler), -100..100.
-Başka alan yazma. Kısa tut, yoksa kesilir.`;
+GÖREV: Oyuncu ${tr(S.player)} devletini şimdi devraldı. SADECE d, date, o, s, tek, r, dan alanlarını döndür.
+d: mevcut tablo, en acil üç sorun, eldeki kozlar — en fazla 100 kelime.
+date: "2026-08".
+o: üç açılış hamlesi önerisi.
+s ve tek: ${tr(S.player)}'nin 2026'daki gerçek konumuna göre 0-100.
+r: 10 aktör — komşular, büyük güçler ve şu bloklar: NATO, Avrupa Birliği, Körfez, Rusya ekseni, Çin ekseni.
+dan: dört danışmanın açılış değerlendirmesi ve ilk önerisi.
+zincir yazma, toprak değişimi yazma.`;
 
 const P_TURN = action => `${SYSTEM}
 
@@ -583,10 +782,16 @@ const SCHEMA = {
         properties:{k:{type:'string'}, h:{type:'integer'}, at:{type:'string'}}, required:['k','h']}},
     ec:{type:'object', properties:{brent:{type:'number'}, buyume:{type:'number'}, enf:{type:'number'}}},
     date:{type:'string'},
+    zincir:{type:'array', items:{type:'object',
+        properties:{f:{type:'string', enum:['aninda','kisa','gec']}, m:{type:'string'}, a:{type:'string'}},
+        required:['f','m']}},
+    dan:{type:'array', items:{type:'object',
+        properties:{r:{type:'string', enum:['dis','ord','eko','ist']}, m:{type:'string'}, o:{type:'string'}},
+        required:['r','m']}},
     o:{type:'array', items:{type:'string'}},
     g:{type:'string'}
   },
-  required:['d']
+  required:['d','date']
 };
 
 /* Hangi generationConfig alanlarının kabul edildiğini deneyerek öğrenir ve hatırlar.
@@ -611,7 +816,7 @@ function endpoint(){
     encodeURIComponent(getModel()) + ':generateContent?key=' + encodeURIComponent(getKey());
 }
 function govde(prompt, semaIste){
-  const gc = { maxOutputTokens: 1600, temperature: 1 };
+  const gc = { maxOutputTokens: 4000, temperature: 1 };
   if(CAPS.jsonMime) gc.responseMimeType = 'application/json';
   if(CAPS.jsonMime && CAPS.sema && semaIste) gc.responseSchema = SCHEMA;
   if(CAPS.dusunme === 0) gc.thinkingConfig = { thinkingBudget: 0 };
@@ -763,11 +968,17 @@ async function play(action, opening){
   try {
     const r = await askEngine(action, opening);
     wait.remove();
+    const once = snapshot();
+    S.blocPrev = Object.fromEntries(Object.keys(BLOCS).map(a => [a, blocSkor(a)]));
     S.turn++;
+    let tarihIlerledi = false;
     if(typeof r.date === 'string'){
       const m = r.date.match(/(\d{4})-(\d{1,2})/);
       if(m){ const y=+m[1], mo=Math.min(12,Math.max(1,+m[2]));
-        if(y>S.y || (y===S.y && mo>=S.m)){ S.y=y; S.m=mo; } }
+        if(y>S.y || (y===S.y && mo>S.m)){ S.y=y; S.m=mo; tarihIlerledi = true; } }
+    }
+    if(!tarihIlerledi && !opening){   // motor tarihi atlarsa bir ay biz ilerletelim
+      S.m++; if(S.m > 12){ S.m = 1; S.y++; }
     }
     applyNumbers(r);
     if(Array.isArray(r.k)) for(const x of r.k){
@@ -783,10 +994,14 @@ async function play(action, opening){
       const c = matchCountry(t.c); if(!c) continue;
       t.c = c; S.ownership[c] = matchCountry(t.o) || t.o; changed.push(c);
     }
+    if(Array.isArray(r.dan) && r.dan.length) S.advisors = r.dan;
+    if(Array.isArray(r.zincir)) S.pendingChain = r.zincir.filter(z => z.f === 'gec').map(z => z.m);
+
     S.history.push(`${AYLAR[S.m-1]} ${S.y}: ${opening?'devraldı':action.slice(0,80)} → ${String(r.d||'').slice(0,130)}`);
     if(r.g) S.over = true;
-    renderTurn(opening?null:action, r);
-    renderChips(r.o); renderHead(); renderWorld(); paintMap(changed);
+    const delta = fark(once);
+    renderTurn(opening?null:action, r, delta);
+    renderChips(r.o); renderHead(); renderWorld(); renderKurul(); paintMap(changed);
     if(changed.length===1) focusOn(changed[0]);
     autosave();
   } catch(err){
@@ -913,7 +1128,8 @@ function newGame(){
     tech:Object.fromEntries(TECHS.map(([k])=>[k,40])),
     econ:{brent:88, buyume:2.4, enf:3.6},
     crises: CRISES.map(c=>({...c})),
-    relations: [], history: [], over:false
+    relations: [], history: [], over:false,
+    advisors: [], pendingChain: [], blocPrev: null
   };
   boot(S);
   play('', true);
@@ -924,7 +1140,7 @@ function boot(state){
   $('#setup').hidden = true; $('#app').hidden = false;
   $('#feed').innerHTML = '';
   buildMap(); view={x:0,y:0,w:1000,h:500}; applyView();
-  renderHead(); renderWorld(); paintMap([]); focusOn(S.player);
+  renderHead(); renderWorld(); renderKurul(); paintMap([]); focusOn(S.player);
   if(S.history.length){
     const e = el('div','entry');
     const st = el('div','stamp'); st.append(el('span',null,'Önceki turlar')); e.appendChild(st);
