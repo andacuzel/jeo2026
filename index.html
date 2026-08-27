@@ -5,11 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kriz Masası 2026 | Komuta Merkezi</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Harita kütüphanesi CDN'i daha stabil olan Cloudflare (cdnjs) ile değiştirildi -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    
     <style>
         body { background-color: #020617; color: #cbd5e1; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
         #map { height: 350px; width: 100%; border-radius: 0.5rem; border: 1px solid #334155; z-index: 1; }
@@ -71,7 +68,6 @@
         </div>
     </div>
 
-    <!-- JS Kodundaki tüm backtick karakterleri parse hatalarını önlemek için standart string formatına çevrildi -->
     <script>
         let gameState = {
             turn: 1,
@@ -119,17 +115,20 @@
             const promptText = "Sen Kriz Masası 2026 jeopolitik oyununun GM'isin.\n" +
                 "Mevcut Durum: " + JSON.stringify(gameState) + "\n" +
                 "Oyuncunun (Türkiye) Hamleleri: " + JSON.stringify(moves) + "\n\n" +
-                "Zarları at ve sonuçları hesapla. DÖNÜŞ FORMATIN SADECE VE KESİNLİKLE GEÇERLİ BİR JSON OLMALIDIR. Markdown (```json) etiketleri KULLANMA.\n" +
-                "Örnek Format:\n" +
+                "Zarları at ve sonuçları hesapla. Yanıtın SADECE aşağdaki JSON formatında olmalı. \n" +
                 "{\n" +
-                '  "narrative": "Paragraflı HTML anlatımı",\n' +
+                '  "narrative": "Paragraflı HTML anlatımı (<div> veya <p> kullan)",\n' +
                 '  "newCrisis": "Kısa kriz ismi",\n' +
                 '  "crisisCoords": [35.0, 33.0],\n' +
                 '  "newStats": { "military": 80, "diplomacy": 65, "stability": 45, "economy": 35 }\n' +
                 "}";
 
+            // responseMimeType: "application/json" parametresi eklenerek kusursuz JSON garantilendi
             const payload = {
                 contents: [{ parts: [{ text: promptText }] }],
+                generationConfig: {
+                    responseMimeType: "application/json"
+                },
                 safetySettings: [
                     { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
                     { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -139,7 +138,7 @@
             };
 
             try {
-                const response = await fetch("[https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=](https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=)" + apiKey, {
+                const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=" + apiKey, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -156,8 +155,8 @@
                     throw new Error("İçerik engellendi. Sebep: " + reason);
                 }
 
+                // responseMimeType kullandığımız için doğrudan stringi parse edebiliriz.
                 let resultText = data.candidates[0].content.parts[0].text;
-                resultText = resultText.replace(/```json/g, '').replace(/```/g, '').trim();
                 const result = JSON.parse(resultText);
 
                 gameState.stats = result.newStats;
